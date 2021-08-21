@@ -99,33 +99,21 @@ const data = `972309143789307837892427823002912187993232459264779585602123355153
 6982830827579236569476828624779390035596305746974937760457260901446490616511944535382859000651230922
 6522237298225216414182700632311932412486684229094722929132443553919589694474810533026596002437093353`;
 
-const data1 = `070
-070
-070`;
-
-const data2 = `0000000000000
-1111111111110
-0000000000000
-0111111111111
-0000000000000
-1111111111110
-0000000000000
-0111111111111
-0000000000000
-1111111111110
-0000000000000
-0111111111111
-0000000000000`;
+const data2 = `00000
+11110
+00000
+01111
+00000`;
 
 function pathFinder(areaStr){
   const area = areaStr.split("\n").map(row => row.split("").map(cell => +cell));
   const visited = area.map(row => row.map(() => "."));
-  const best = area.map(row => row.map(() => "."));
   const N = area.length - 1;
 
+  visited[0][0] = 0;
+
   function check(x, y) {
-    if (x < 0 || x > N || y < 0 || y > N) return false; // out of border
-    if (best[x][y] !== ".") return false; // already found best way
+    if (x < 0 || x > N || y < 0 || y > N) return false;
     return true;
   }
 
@@ -139,48 +127,61 @@ function pathFinder(areaStr){
       })
   }
 
+  let candidates = [{x: 0, y: 0, transitionCost: 0}];
+
   function pushOrUpdate(candidate) {
     let existed = candidates.find(cell => (cell.x === candidate.x && cell.y === candidate.y));
     if (existed) {
+      existed.transitionCost = candidate.transitionCost;
       return;
     }
     candidates.push(candidate);
   }
 
-  function updateVisited(x, y, newCost) {
-    const current = visited[x][y];
-    if (current === '.') {
-      visited[x][y] = newCost;
-    } else if (current <= newCost) {
-      // skipped
-    } else {
-      visited[x][y] = newCost;
-    }
-  }
-
-  visited[0][0] = 0;
-  const candidates = [{x: 0, y: 0, transitionCost: 0}];
-
   let count = 0;
   while (candidates.length > 0 && count < 100000) {
     count++;
-    // find candidate with minimal cost to transit
-    const first = candidates.reduce((min, cell) => visited[cell.x][cell.y] < visited[min.x][min.y] ? cell : min, candidates[0]);
-    const costToProcessedPoint = visited[first.x][first.y];
-    best[first.x][first.y] = costToProcessedPoint;
-    // remove best point (processed) from candidates
-    candidates.splice(candidates.findIndex(cell => (cell.x === first.x && cell.y === first.y)), 1);
+    // find candidate with minimal transitionCost
+    const first = candidates.reduce((acc, cell) => cell.transitionCost < acc.transitionCost ? cell : acc, candidates[0]);
 
-    getCandidates(first.x, first.y).forEach(candidate => {
-      const costTransitionToCandidate = candidate.transitionCost + costToProcessedPoint;
-      updateVisited(candidate.x, candidate.y, costTransitionToCandidate);
-      pushOrUpdate(candidate);
-    })
+    const currTimer = Date.now();
+    candidates.splice(candidates.findIndex(cell => (cell.x === first.x && cell.y === first.y)), 1);
+    timer += Date.now() - currTimer;
+    const newCandidates = getCandidates(first.x, first.y);
+
+    for (let i = 0; i < newCandidates.length; i++) {
+      const candidate = newCandidates[i];
+      const currentCost = visited[first.x][first.y];
+      const nextCost = currentCost + candidate.transitionCost;
+      const visitedCost = visited[candidate.x][candidate.y];
+      if (visitedCost === ".") {
+        // not visited yet - set cost
+        visited[candidate.x][candidate.y] = nextCost;
+        pushOrUpdate(candidate);
+      } else if (visitedCost <= nextCost) {
+        // expensive - skip it
+      } else {
+        // cheaper - update cost
+        visited[candidate.x][candidate.y] = nextCost;
+        pushOrUpdate(candidate);
+      }
+    }
+    //console.log("candidates", candidates);
   }
 
-  return best[N][N];
+  console.log("count", count);
+
+  //console.log("visited", visited);
+
+  return visited[N][N];
 }
+
+let timer = 0;
+
+
 
 console.time("exec");
 console.log(pathFinder(data));
 console.timeEnd("exec");
+
+console.log("timer", timer);
